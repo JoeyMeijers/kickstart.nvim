@@ -927,9 +927,9 @@ require('lazy').setup({
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
   -- require 'kickstart.plugins.debug',
-  -- require 'kickstart.plugins.indent_line',
+  require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
-  -- require 'kickstart.plugins.autopairs',
+  require 'kickstart.plugins.autopairs',
   -- require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
@@ -967,3 +967,95 @@ require('lazy').setup({
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
+
+-- --  joey
+-- run python and R files
+-- vim.api.nvim_set_keymap('n', '<leader>r', ':w !python3 %<CR>', { noremap = true, silent = true })
+-- vim.api.nvim_set_keymap('n', '<leader>r', ':w !Rscript %<CR>', { noremap = true, silent = true })
+--
+-- Stel de toetsbinding in alleen voor Python-bestanden
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'python',
+  callback = function()
+    vim.api.nvim_set_keymap('n', '<leader>r', ':w !python3 %<CR>', { noremap = true, silent = true })
+  end,
+})
+-- pytest
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'python',
+  callback = function()
+    vim.api.nvim_set_keymap('n', '<leader>t', ':w | !pytest<CR>', { noremap = true, silent = true })
+  end,
+})
+
+-- Voor R
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'r',
+  callback = function()
+    vim.api.nvim_set_keymap('n', '<leader>r', ':w !Rscript %<CR>', { noremap = true, silent = true })
+  end,
+})
+-- Devtools test
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'r',
+  callback = function()
+    -- Voer devtools::test() uit voor R
+    vim.api.nvim_set_keymap('n', '<leader>t', ':w | !Rscript -e "devtools::test()"<CR>', { noremap = true, silent = true })
+  end,
+})
+
+-- C#
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'cs',
+  callback = function()
+    vim.api.nvim_set_keymap('n', '<leader>r', ':w | !dotnet run<CR>', { noremap = true, silent = true })
+  end,
+})
+-- dotnet test
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'cs',
+  callback = function()
+    -- Voer devtools::test() uit voor R
+    vim.api.nvim_set_keymap('n', '<leader>t', ':w | !dotnet test<CR>', { noremap = true, silent = true })
+  end,
+})
+
+-- c
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'c',
+  callback = function()
+    vim.keymap.set('n', '<leader>r', ':w<CR>:!gcc % -o %:r && ./%:r<CR>', { noremap = true, silent = true })
+  end,
+})
+
+-- vim.opt
+vim.opt.colorcolumn = '80'
+vim.opt.updatetime = 50
+vim.opt.relativenumber = true
+-- Standaardinstellingen voor inspringing
+vim.opt.tabstop = 4 -- Een tab wordt weergegeven als 4 spaties
+vim.opt.shiftwidth = 4 -- Het aantal spaties voor (de)indenteren
+vim.opt.expandtab = true -- Converteer tabs naar spaties
+-- remaps
+vim.keymap.set('n', '<leader>pv', vim.cmd.Ex) -- file explorer
+-- move multiple lines
+vim.keymap.set('v', 'J', ":m '>+1<CR>gv=gv")
+vim.keymap.set('v', 'K', ":m '<-2<CR>gv=gv")
+vim.opt.guicursor = '' -- fat cursor
+-- undo settings
+vim.opt.swapfile = false
+vim.opt.backup = false
+vim.opt.undodir = os.getenv 'HOME' .. '/.vim/undodir'
+vim.opt.undofile = true
+
+vim.keymap.set('n', 'J', 'mzJ`z')
+vim.keymap.set('n', 'C-d>', '<C-d>zz')
+vim.keymap.set('n', 'C-u>', '<C-u>zz')
+vim.keymap.set('n', 'n', 'nzzzv')
+vim.keymap.set('n', 'N', 'Nzzzv')
+vim.keymap.set('n', '<leader>f', function()
+  vim.lsp.buf.format()
+end)
+-- vim.keymap.set('x', '<leader>p', '"_dP')
+-- Save file
+vim.keymap.set('n', '<Leader>w', ':w<CR>', { noremap = true, silent = true })
