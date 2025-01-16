@@ -930,7 +930,7 @@ require('lazy').setup({
   require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.neo-tree',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
@@ -969,10 +969,8 @@ require('lazy').setup({
 -- vim: ts=2 sts=2 sw=2 et
 
 -- --  joey
--- run python and R files
--- vim.api.nvim_set_keymap('n', '<leader>r', ':w !python3 %<CR>', { noremap = true, silent = true })
--- vim.api.nvim_set_keymap('n', '<leader>r', ':w !Rscript %<CR>', { noremap = true, silent = true })
---
+-- custom functions
+-- run code
 -- Stel de toetsbinding in alleen voor Python-bestanden
 vim.api.nvim_create_autocmd('FileType', {
   pattern = 'python',
@@ -1024,7 +1022,15 @@ vim.api.nvim_create_autocmd('FileType', {
 vim.api.nvim_create_autocmd('FileType', {
   pattern = 'c',
   callback = function()
-    vim.keymap.set('n', '<leader>r', ':w<CR>:!gcc % -o %:r && ./%:r<CR>', { noremap = true, silent = true })
+    vim.keymap.set('n', '<leader>r', ':w<CR>:!gcc -Wall -Wextra -g % -o %:r && ./%:r<CR>', { noremap = true, silent = true })
+  end,
+})
+
+-- c++
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'c',
+  callback = function()
+    vim.keymap.set('n', '<leader>r', ':w<CR>:!gcc -Wall -Wextra -g % -o %:r && %:r<CR>', { noremap = true, silent = true })
   end,
 })
 
@@ -1059,3 +1065,4 @@ end)
 -- vim.keymap.set('x', '<leader>p', '"_dP')
 -- Save file
 vim.keymap.set('n', '<Leader>w', ':w<CR>', { noremap = true, silent = true })
+vim.keymap.set('n', '<leader>e', ':Neotree toggle<CR>', { noremap = true, silent = true })
