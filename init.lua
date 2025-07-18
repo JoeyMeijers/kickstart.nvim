@@ -381,11 +381,21 @@ require('lazy').setup({
         -- You can put your default mappings / updates / etc. in here
         --  All the info you're looking for is in `:help telescope.setup()`
         --
-        -- defaults = {
-        --   mappings = {
-        --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-        --   },
-        -- },
+        defaults = {
+          vimgrep_arguments = {
+            'rg',
+            '--ignore', -- <== forceer respect voor .gitignore
+            '--color=never',
+            '--no-heading',
+            '--with-filename',
+            '--line-number',
+            '--column',
+            '--smart-case',
+          },
+          -- mappings = {
+          --   i = { ['<c-enter>'] = 'to_fuzzy_refine' },
+          -- },
+        },
         -- pickers = {}
         extensions = {
           ['ui-select'] = {
@@ -1028,7 +1038,7 @@ vim.api.nvim_create_autocmd('FileType', {
 
 -- c++
 vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'c',
+  pattern = 'cpp',
   callback = function()
     vim.keymap.set('n', '<leader>r', ':w<CR>:!gcc -Wall -Wextra -g % -o %:r && %:r<CR>', { noremap = true, silent = true })
   end,
@@ -1062,6 +1072,13 @@ vim.keymap.set('n', 'N', 'Nzzzv')
 vim.keymap.set('n', '<leader>f', function()
   vim.lsp.buf.format()
 end)
+
+-- switch panes
+vim.keymap.set('n', '<leader>k', '<C-w>k', { desc = 'Pane up', noremap = true, silent = true })
+vim.keymap.set('n', '<leader>j', '<C-w>j', { desc = 'Pane down', noremap = true, silent = true })
+vim.keymap.set('n', '<leader>h', '<C-w>h', { desc = 'Pane left', noremap = true, silent = true })
+vim.keymap.set('n', '<leader>l', '<C-w>l', { desc = 'Pane right', noremap = true, silent = true })
+
 -- vim.keymap.set('x', '<leader>p', '"_dP')
 -- Save file
 vim.keymap.set('n', '<Leader>w', ':w<CR>', { noremap = true, silent = true })
