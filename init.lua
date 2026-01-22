@@ -334,7 +334,7 @@ require('lazy').setup({
   { -- Fuzzy Finder (files, lsp, etc)
     'nvim-telescope/telescope.nvim',
     event = 'VimEnter',
-    branch = '0.1.x',
+    -- branch = '0.1.x',
     dependencies = {
       'nvim-lua/plenary.nvim',
       { -- If encountering errors, see telescope-fzf-native README for installation instructions
@@ -562,7 +562,7 @@ require('lazy').setup({
           --
           -- When you move your cursor, the highlights will be cleared (the second autocommand).
           local client = vim.lsp.get_client_by_id(event.data.client_id)
-          if client and client.supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight) then
+          if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_documentHighlight) then
             local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
             vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
               buffer = event.buf,
@@ -589,7 +589,7 @@ require('lazy').setup({
           -- code, if the language server you are using supports them
           --
           -- This may be unwanted, since they displace some of your code
-          if client and client.supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
+          if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
             map('<leader>th', function()
               vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
             end, '[T]oggle Inlay [H]ints')
@@ -861,6 +861,21 @@ require('lazy').setup({
     end,
   },
 
+  -- custom color schemes
+  {
+    'tanvirtin/monokai.nvim',
+    name = 'monokai',
+    lazy = false,
+    priority = 1000,
+    config = function()
+      require('monokai').setup {
+        palette = require('monokai').pro,
+        italics = false,
+      }
+      vim.cmd.colorscheme 'monokai'
+    end,
+  },
+
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
@@ -1044,6 +1059,14 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 
+-- go
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'go',
+  callback = function()
+    vim.api.nvim_set_keymap('n', '<leader>r', ':w !go run . %<CR>', { noremap = true, silent = true })
+  end,
+})
+
 -- vim.opt
 vim.opt.colorcolumn = '80'
 vim.opt.updatetime = 50
@@ -1083,3 +1106,6 @@ vim.keymap.set('n', '<leader>l', '<C-w>l', { desc = 'Pane right', noremap = true
 -- Save file
 vim.keymap.set('n', '<Leader>w', ':w<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>e', ':Neotree toggle<CR>', { noremap = true, silent = true })
+
+-- set colorscheme
+-- vim.cmd.colorscheme 'monokai'
