@@ -1107,5 +1107,60 @@ vim.keymap.set('n', '<leader>l', '<C-w>l', { desc = 'Pane right', noremap = true
 vim.keymap.set('n', '<Leader>w', ':w<CR>', { noremap = true, silent = true })
 vim.keymap.set('n', '<leader>e', ':Neotree toggle<CR>', { noremap = true, silent = true })
 
+--- Zorg dat telescope en gitsigns geladen zijn
+local ok_telescope, telescope = pcall(require, 'telescope')
+local ok_gs, gs = pcall(require, 'gitsigns')
+
+if ok_telescope then
+  local builtin = require 'telescope.builtin'
+
+  -- Git commits (globaal en buffer)
+  vim.keymap.set('n', '<leader>gc', builtin.git_commits, { desc = 'Git Commits' })
+  vim.keymap.set('n', '<leader>gC', builtin.git_bcommits, { desc = 'Git Buffer Commits' })
+
+  -- Git branches
+  vim.keymap.set('n', '<leader>gb', builtin.git_branches, { desc = 'Git Branches' })
+
+  -- Git log graph (zelfde als git commits, maar je kunt later met opts aanpassen)
+  vim.keymap.set('n', '<leader>gl', builtin.git_commits, { desc = 'Git Log Graph' })
+
+  -- Git diff van huidige buffer
+  vim.keymap.set('n', '<leader>gd', function()
+    builtin.git_bcommits { show_diff = true }
+  end, { desc = 'Git File Diff (pick commit)' })
+
+  -- Checkout commit (zelfde als git_commits)
+  vim.keymap.set('n', '<leader>gco', builtin.git_commits, { desc = 'Checkout Commit' })
+
+  -- Git stash (via builtin als extension geladen)
+  vim.keymap.set('n', '<leader>gS', builtin.git_stash, { desc = 'Git Stash List' })
+
+  -- Git diff tussen branches
+  vim.keymap.set('n', '<leader>gdf', function()
+    builtin.git_branches {
+      attach_mappings = function(prompt_bufnr)
+        local actions = require 'telescope.actions'
+        local action_state = require 'telescope.actions.state'
+        actions.select_default:replace(function()
+          local selection = action_state.get_selected_entry()
+          actions.close(prompt_bufnr)
+          vim.cmd('Git diff ' .. selection.value)
+        end)
+        return true
+      end,
+    }
+  end, { desc = 'Git Diff Branch' })
+
+  -- Optioneel: Git status via extension
+  vim.keymap.set('n', '<leader>gs', ':Telescope git_status<CR>', { desc = 'Git Status (Telescope)' })
+end
+
+-- Gitsigns voor blame
+if ok_gs then
+  vim.keymap.set('n', '<leader>gbn', function()
+    gs.blame_line { full = true }
+  end, { desc = 'Git Blame Line' })
+end -- Git hotkeys
+
 -- set colorscheme
 -- vim.cmd.colorscheme 'monokai'
