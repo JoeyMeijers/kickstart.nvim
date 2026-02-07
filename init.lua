@@ -1162,5 +1162,11 @@ if ok_gs then
   end, { desc = 'Git Blame Line' })
 end -- Git hotkeys
 
+-- Floating terminal
+-- keymaps
+vim.keymap.set({ 'n', 't' }, '<leader>tt', function()
+  require('custom.floating_terminal').toggle()
+end, { desc = 'Toggle floating terminal' })
+
 -- set colorscheme
 -- vim.cmd.colorscheme 'monokai'
