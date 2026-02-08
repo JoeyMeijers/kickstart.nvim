@@ -5,6 +5,14 @@ local state = {
   win = nil,
 }
 
+local function get_shell()
+  if vim.fn.has 'win32' == 1 then
+    -- Git Bash (meest stabiel)
+    return 'C:/Program Files/Git/bin/bash.exe'
+  end
+  return vim.o.shell
+end
+
 local function create_window()
   local width = math.floor(vim.o.columns * 0.8)
   local height = math.floor(vim.o.lines * 0.8)
@@ -38,7 +46,7 @@ function M.toggle()
     vim.api.nvim_buf_set_option(state.buf, 'bufhidden', 'hide')
 
     create_window()
-    vim.fn.termopen(vim.o.shell)
+    vim.fn.termopen { get_shell(), '--login', '-i' }
     return
   end
 
