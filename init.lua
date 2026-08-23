@@ -132,7 +132,7 @@ vim.opt.smartcase = true
 vim.opt.signcolumn = 'yes'
 
 -- Decrease update time
-vim.opt.updatetime = 250
+vim.opt.updatetime = 50
 
 -- Decrease mapped sequence wait time
 -- Displays which-key popup sooner
@@ -319,6 +319,7 @@ require('lazy').setup({
         { '<leader>s', group = '[S]earch' },
         { '<leader>w', group = '[W]orkspace' },
         { '<leader>t', group = '[T]oggle' },
+        { '<leader>g', group = '[G]it' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
       },
     },
@@ -651,6 +652,18 @@ require('lazy').setup({
             },
           },
         },
+        -- Python: BasedPyright handles types and language features; Ruff handles linting and formatting.
+        basedpyright = {
+          settings = {
+            basedpyright = {
+              analysis = {
+                typeCheckingMode = 'standard',
+                diagnosticMode = 'openFilesOnly',
+              },
+            },
+          },
+        },
+        ruff = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -670,17 +683,16 @@ require('lazy').setup({
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       require('mason-lspconfig').setup {
-        handlers = {
-          function(server_name)
-            local server = servers[server_name] or {}
-            -- This handles overriding only values explicitly passed
-            -- by the server configuration above. Useful when disabling
-            -- certain features of an LSP (for example, turning off formatting for ts_ls)
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
-          end,
-        },
+        -- Mason v2 automatically enables installed servers. Limit that behaviour to the
+        -- servers declared above, so alternative Python servers cannot attach as well.
+        automatic_enable = vim.tbl_keys(servers),
       }
+
+      for server_name, server in pairs(servers) do
+        -- This handles overriding only values explicitly passed by the server configuration.
+        server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
+        vim.lsp.config(server_name, server)
+      end
     end,
   },
 
@@ -718,6 +730,7 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        python = { 'ruff_format' },
         -- Conform can also run multiple formatters sequentially
         -- python = { "isort", "black" },
         --
@@ -843,39 +856,6 @@ require('lazy').setup({
     end,
   },
 
-  { -- You can easily change to a different colorscheme.
-    -- Change the name of the colorscheme plugin below, and then
-    -- change the command in the config to whatever the name of that colorscheme is.
-    --
-    -- If you want to see what colorschemes are already installed, you can use `:Telescope colorscheme`.
-    'folke/tokyonight.nvim',
-    priority = 1000, -- Make sure to load this before all the other start plugins.
-    init = function()
-      -- Load the colorscheme here.
-      -- Like many other themes, this one has different styles, and you could load
-      -- any other, such as 'tokyonight-storm', 'tokyonight-moon', or 'tokyonight-day'.
-      -- vim.cmd.colorscheme 'tokyonight-night'
-
-      -- You can configure highlights by doing something like:
-      vim.cmd.hi 'Comment gui=none'
-    end,
-  },
-
-  -- custom color schemes
-  {
-    'tanvirtin/monokai.nvim',
-    name = 'monokai',
-    lazy = false,
-    priority = 1000,
-    config = function()
-      require('monokai').setup {
-        palette = require('monokai').pro,
-        italics = false,
-      }
-      vim.cmd.colorscheme 'monokai'
-    end,
-  },
-
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
@@ -956,7 +936,7 @@ require('lazy').setup({
   -- require 'kickstart.plugins.lint',
   require 'kickstart.plugins.autopairs',
   require 'kickstart.plugins.neo-tree',
-  -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
+  require 'kickstart.plugins.gitsigns', -- adds Git hunk keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
@@ -993,180 +973,7 @@ require('lazy').setup({
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
 
--- --  joey
--- custom functions
--- run code
--- Stel de toetsbinding in alleen voor Python-bestanden
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'python',
-  callback = function()
-    vim.api.nvim_set_keymap('n', '<leader>r', ':w !python3 %<CR>', { noremap = true, silent = true })
-  end,
-})
--- pytest
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'python',
-  callback = function()
-    vim.api.nvim_set_keymap('n', '<leader>t', ':w | !pytest<CR>', { noremap = true, silent = true })
-  end,
-})
-
--- Voor R
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'r',
-  callback = function()
-    vim.api.nvim_set_keymap('n', '<leader>r', ':w !Rscript %<CR>', { noremap = true, silent = true })
-  end,
-})
--- Devtools test
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'r',
-  callback = function()
-    -- Voer devtools::test() uit voor R
-    vim.api.nvim_set_keymap('n', '<leader>t', ':w | !Rscript -e "devtools::test()"<CR>', { noremap = true, silent = true })
-  end,
-})
-
--- C#
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'cs',
-  callback = function()
-    vim.api.nvim_set_keymap('n', '<leader>r', ':w | !dotnet run<CR>', { noremap = true, silent = true })
-  end,
-})
--- dotnet test
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'cs',
-  callback = function()
-    -- Voer devtools::test() uit voor R
-    vim.api.nvim_set_keymap('n', '<leader>t', ':w | !dotnet test<CR>', { noremap = true, silent = true })
-  end,
-})
-
--- c
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'c',
-  callback = function()
-    vim.keymap.set('n', '<leader>r', ':w<CR>:!gcc -Wall -Wextra -g % -o %:r && ./%:r<CR>', { noremap = true, silent = true })
-  end,
-})
-
--- c++
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'cpp',
-  callback = function()
-    vim.keymap.set('n', '<leader>r', ':w<CR>:!gcc -Wall -Wextra -g % -o %:r && %:r<CR>', { noremap = true, silent = true })
-  end,
-})
-
--- go
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'go',
-  callback = function()
-    vim.api.nvim_set_keymap('n', '<leader>r', ':w !go run . %<CR>', { noremap = true, silent = true })
-  end,
-})
-
--- vim.opt
-vim.opt.colorcolumn = '80'
-vim.opt.updatetime = 50
-vim.opt.relativenumber = true
--- Standaardinstellingen voor inspringing
-vim.opt.tabstop = 4 -- Een tab wordt weergegeven als 4 spaties
-vim.opt.shiftwidth = 4 -- Het aantal spaties voor (de)indenteren
-vim.opt.expandtab = true -- Converteer tabs naar spaties
--- remaps
-vim.keymap.set('n', '<leader>pv', vim.cmd.Ex) -- file explorer
--- move multiple lines
-vim.keymap.set('v', 'J', ":m '>+1<CR>gv=gv")
-vim.keymap.set('v', 'K', ":m '<-2<CR>gv=gv")
-vim.opt.guicursor = '' -- fat cursor
--- undo settings
-vim.opt.swapfile = false
-vim.opt.backup = false
-vim.opt.undodir = os.getenv 'HOME' .. '/.vim/undodir'
-vim.opt.undofile = true
-
-vim.keymap.set('n', 'J', 'mzJ`z')
-vim.keymap.set('n', 'C-d>', '<C-d>zz')
-vim.keymap.set('n', 'C-u>', '<C-u>zz')
-vim.keymap.set('n', 'n', 'nzzzv')
-vim.keymap.set('n', 'N', 'Nzzzv')
-vim.keymap.set('n', '<leader>f', function()
-  vim.lsp.buf.format()
-end)
-
--- switch panes
-vim.keymap.set('n', '<leader>k', '<C-w>k', { desc = 'Pane up', noremap = true, silent = true })
-vim.keymap.set('n', '<leader>j', '<C-w>j', { desc = 'Pane down', noremap = true, silent = true })
-vim.keymap.set('n', '<leader>h', '<C-w>h', { desc = 'Pane left', noremap = true, silent = true })
-vim.keymap.set('n', '<leader>l', '<C-w>l', { desc = 'Pane right', noremap = true, silent = true })
-
--- vim.keymap.set('x', '<leader>p', '"_dP')
--- Save file
-vim.keymap.set('n', '<Leader>w', ':w<CR>', { noremap = true, silent = true })
-vim.keymap.set('n', '<leader>e', ':Neotree toggle<CR>', { noremap = true, silent = true })
-
---- Zorg dat telescope en gitsigns geladen zijn
-local ok_telescope, telescope = pcall(require, 'telescope')
-local ok_gs, gs = pcall(require, 'gitsigns')
-
-if ok_telescope then
-  local builtin = require 'telescope.builtin'
-
-  -- Git commits (globaal en buffer)
-  vim.keymap.set('n', '<leader>gc', builtin.git_commits, { desc = 'Git Commits' })
-  vim.keymap.set('n', '<leader>gC', builtin.git_bcommits, { desc = 'Git Buffer Commits' })
-
-  -- Git branches
-  vim.keymap.set('n', '<leader>gb', builtin.git_branches, { desc = 'Git Branches' })
-
-  -- Git log graph (zelfde als git commits, maar je kunt later met opts aanpassen)
-  vim.keymap.set('n', '<leader>gl', builtin.git_commits, { desc = 'Git Log Graph' })
-
-  -- Git diff van huidige buffer
-  vim.keymap.set('n', '<leader>gd', function()
-    builtin.git_bcommits { show_diff = true }
-  end, { desc = 'Git File Diff (pick commit)' })
-
-  -- Checkout commit (zelfde als git_commits)
-  vim.keymap.set('n', '<leader>gco', builtin.git_commits, { desc = 'Checkout Commit' })
-
-  -- Git stash (via builtin als extension geladen)
-  vim.keymap.set('n', '<leader>gS', builtin.git_stash, { desc = 'Git Stash List' })
-
-  -- Git diff tussen branches
-  vim.keymap.set('n', '<leader>gdf', function()
-    builtin.git_branches {
-      attach_mappings = function(prompt_bufnr)
-        local actions = require 'telescope.actions'
-        local action_state = require 'telescope.actions.state'
-        actions.select_default:replace(function()
-          local selection = action_state.get_selected_entry()
-          actions.close(prompt_bufnr)
-          vim.cmd('Git diff ' .. selection.value)
-        end)
-        return true
-      end,
-    }
-  end, { desc = 'Git Diff Branch' })
-
-  -- Optioneel: Git status via extension
-  vim.keymap.set('n', '<leader>gs', ':Telescope git_status<CR>', { desc = 'Git Status (Telescope)' })
-end
-
--- Gitsigns voor blame
-if ok_gs then
-  vim.keymap.set('n', '<leader>gbn', function()
-    gs.blame_line { full = true }
-  end, { desc = 'Git Blame Line' })
-end -- Git hotkeys
-
--- Floating terminal
--- keymaps
-vim.keymap.set({ 'n', 't' }, '<leader>tt', function()
-  require('custom.floating_terminal').toggle()
-end, { desc = 'Toggle floating terminal' })
-
--- set colorscheme
--- vim.cmd.colorscheme 'monokai'
+-- Personal configuration is split by responsibility.
+require 'config.options'
+require 'config.keymaps'
+require 'config.autocmds'
