@@ -8,6 +8,6 @@ vim.opt.guicursor = ''
 vim.opt.swapfile = false
 vim.opt.backup = false
 
-local undodir = vim.fn.expand '~/.vim/undodir'
+local undodir = vim.fn.stdpath 'state' .. '/undo'
 vim.fn.mkdir(undodir, 'p')
 vim.opt.undodir = undodir
