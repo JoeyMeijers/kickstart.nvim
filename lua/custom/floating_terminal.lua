@@ -7,8 +7,21 @@ local state = {
 
 local function get_shell()
   if vim.fn.has 'win32' == 1 then
-    -- Git Bash (meest stabiel)
-    return 'C:/Program Files/Git/bin/bash.exe'
+    -- Git Bash (meest stabiel) -- check the common install locations rather than hardcoding one,
+    -- since a non-default/portable install (scoop, per-user AppData, 32-bit) won't be there.
+    local candidates = {
+      'C:/Program Files/Git/bin/bash.exe',
+      'C:/Program Files (x86)/Git/bin/bash.exe',
+      vim.fn.expand '~/scoop/apps/git/current/bin/bash.exe',
+      vim.fn.expand '~/AppData/Local/Programs/Git/bin/bash.exe',
+    }
+    for _, path in ipairs(candidates) do
+      if vim.fn.filereadable(path) == 1 then
+        return path
+      end
+    end
+    vim.notify('Git Bash not found in common install locations, falling back to ' .. vim.o.shell, vim.log.levels.WARN)
+    return vim.o.shell
   end
   return vim.o.shell
 end
@@ -43,7 +56,7 @@ function M.toggle()
   -- buffer bestaat niet → maak terminal buffer
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     state.buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_buf_set_option(state.buf, 'bufhidden', 'hide')
+    vim.bo[state.buf].bufhidden = 'hide' -- nvim_buf_set_option() is deprecated; index vim.bo instead
 
     create_window()
     vim.fn.termopen { get_shell(), '--login', '-i' }
