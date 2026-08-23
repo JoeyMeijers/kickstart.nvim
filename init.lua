@@ -918,8 +918,16 @@ require('lazy').setup({
     -- vim.treesitter.language.add() for anything else -- not before.
     build = ':TSUpdate',
     config = function()
-      local ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' }
+      local ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc' }
       require('nvim-treesitter').install(ensure_installed)
+
+      -- Treesitter indentation is still marked "experimental" upstream, and it's a generic
+      -- algorithm -- for languages with a mature, purpose-built indent/<lang>.vim script (like
+      -- Python's, which has years of special-casing for indenting after `:`), treesitter's
+      -- indentexpr can be a regression rather than an upgrade. This is the direct replacement for
+      -- the old master-branch config's `indent = { enable = true, disable = { 'ruby' } } }` --
+      -- python was added 2026-08 after treesitter's indentexpr broke auto-indent after `:`.
+      local indent_excluded = { python = true, ruby = true }
 
       -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
       -- The old `opts = { ensure_installed, auto_install, highlight, indent }` table is gone on
@@ -951,10 +959,9 @@ require('lazy').setup({
             return
           end
 
-          -- NOTE: treesitter indentation is still marked "experimental" upstream. If you hit
-          -- weird indent behavior in a given filetype, comment the next line out for it (this is
-          -- the replacement for the old `indent = { enable = true, disable = {...} }`).
-          vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          if not indent_excluded[lang] then
+            vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          end
         end,
       })
     end,
