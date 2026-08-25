@@ -21,11 +21,12 @@ end
 map('n', '<leader>gc', telescope_builtin 'git_commits', { desc = 'Git commits' })
 map('n', '<leader>gC', telescope_builtin 'git_bcommits', { desc = 'Git buffer commits' })
 map('n', '<leader>gb', telescope_builtin 'git_branches', { desc = 'Git branches' })
-map('n', '<leader>gl', telescope_builtin 'git_commits', { desc = 'Git log' })
 map('n', '<leader>gd', telescope_builtin('git_bcommits', { show_diff = true }), { desc = 'Git file diff' })
 map('n', '<leader>gS', telescope_builtin 'git_stash', { desc = 'Git stash list' })
 map('n', '<leader>gs', '<cmd>Telescope git_status<CR>', { desc = 'Git status' })
-map('n', '<leader>gbn', function()
+-- <leader>gB, niet <leader>gbn: dat laatste maakt <leader>gb (branches) een prefix,
+-- waardoor die eerst 'timeoutlen' lang blijft wachten op een volgende toets.
+map('n', '<leader>gB', function()
   require('gitsigns').blame_line { full = true }
 end, { desc = 'Git blame line' })
 

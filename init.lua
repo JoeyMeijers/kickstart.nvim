@@ -664,6 +664,18 @@ require('lazy').setup({
           },
         },
         ruff = {},
+
+        -- Web: ts_ls dekt de TypeScript/JavaScript-kant. Die attacht alleen aan
+        -- js/jsx/ts/tsx en ziet je .component.html templates dus niet -- daarvoor is
+        -- angularls: completion van je eigen componenten/directives in templates,
+        -- type-checking van de template, en navigatie van template naar class.
+        -- Beide draaien naast elkaar op .ts; angularls start alleen waar een
+        -- angular.json of nx.json staat, dus in gewone JS-projecten blijft hij stil.
+        ts_ls = {},
+        angularls = {},
+        html = {},
+        cssls = {},
+        jsonls = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -679,6 +691,7 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'prettierd', -- Used to format web files (js/ts/html/css/json)
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -728,15 +741,32 @@ require('lazy').setup({
           lsp_format = lsp_format_opt,
         }
       end,
-      formatters_by_ft = {
-        lua = { 'stylua' },
-        python = { 'ruff_format' },
-        -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
-        --
-        -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
-      },
+      formatters_by_ft = (function()
+        local prettier = { 'prettierd', 'prettier', stop_after_first = true }
+        local ft = {
+          lua = { 'stylua' },
+          python = { 'ruff_format' },
+        }
+        -- prettier leidt zijn parser af uit de bestandsnaam; *.component.html is bij
+        -- prettier een eigen taal ("Angular"), dus htmlangular heeft geen extra args nodig.
+        for _, name in ipairs {
+          'javascript',
+          'javascriptreact',
+          'typescript',
+          'typescriptreact',
+          'html',
+          'htmlangular',
+          'css',
+          'scss',
+          'json',
+          'jsonc',
+          'yaml',
+          'markdown',
+        } do
+          ft[name] = prettier
+        end
+        return ft
+      end)(),
     },
   },
 
@@ -918,7 +948,28 @@ require('lazy').setup({
     -- vim.treesitter.language.add() for anything else -- not before.
     build = ':TSUpdate',
     config = function()
-      local ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'python', 'query', 'vim', 'vimdoc' }
+      local ensure_installed = {
+        'angular',
+        'bash',
+        'c',
+        'css',
+        'diff',
+        'html',
+        'javascript',
+        'json',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'python',
+        'query',
+        'scss',
+        'tsx',
+        'typescript',
+        'vim',
+        'vimdoc',
+        'yaml',
+      }
       require('nvim-treesitter').install(ensure_installed)
 
       -- Treesitter indentation is still marked "experimental" upstream, and it's a generic
