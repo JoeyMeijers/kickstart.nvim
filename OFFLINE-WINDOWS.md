@@ -4,8 +4,13 @@ Deze config draait op een machine zonder internet, mits je de artefacten die
 normaal gedownload worden vooraf meeneemt. Nexus (npm-proxy) dekt een groot deel
 daarvan; de rest is handwerk.
 
-Uitgangspunt: de werk-PC heeft **node + npm met `.npmrc` naar Nexus**, en een
-Neovim 0.12.x installatie.
+Uitgangspunt: de werk-PC heeft **node + npm met `.npmrc` naar Nexus**, een werkende
+`pip install`, en een Neovim 0.12.x installatie.
+
+> **Scripts.** `scripts\export-offline.ps1` en `scripts\import-offline.ps1` doen
+> stap 1 en 2 hieronder automatisch. Draai ze eerst met `-DryRun`. De handmatige
+> beschrijving hieronder blijft de bron van waarheid -- en je terugval als
+> PowerShell op de werk-PC dichtstaat.
 
 ## Windows-paden
 
@@ -63,9 +68,20 @@ Windows) naar de offline machine.
 
 ### e. De drie GitHub-binaries
 
-`ruff`, `stylua` en `lua-language-server` komen niet van npm. Download de
-Windows-releases handmatig en zet ze in `mason\bin\`, of installeer ze
-buiten Mason om en zorg dat ze op je `PATH` staan.
+Mason haalt `ruff`, `stylua` en `lua-language-server` van GitHub-releases, niet van
+npm of PyPI -- die drie moeten dus mee (~49 MB). Let op dat `ruff` hier de
+uitzondering is: die staat ook op PyPI, maar Mason gebruikt de GitHub-release.
+
+Wat juist **niet** mee hoeft, en waarom dat de moeite van het weglaten waard is:
+
+| bron | omvang | |
+|---|---|---|
+| npm (7 pakketten) | ~517 MB | Nexus levert dit |
+| PyPI (`basedpyright`) | ~281 MB | `pip install` werkt daar |
+
+Blind de hele `mason`-map kopieren is dus ruim 800 MB waarvan het grootste deel op
+de doelmachine gewoon opnieuw op te halen is. Het complete pakket komt selectief
+uit op zo'n 160 MB.
 
 ## 2. Op de offline machine
 
