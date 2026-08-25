@@ -466,8 +466,8 @@ require('lazy').setup({
     'neovim/nvim-lspconfig',
     dependencies = {
       -- Automatically install LSPs and related tools to stdpath for Neovim
-      { 'williamboman/mason.nvim', config = true }, -- NOTE: Must be loaded before dependants
-      'williamboman/mason-lspconfig.nvim',
+      { 'mason-org/mason.nvim', config = true }, -- NOTE: Must be loaded before dependants
+      'mason-org/mason-lspconfig.nvim',
       'WhoIsSethDaniel/mason-tool-installer.nvim',
 
       -- Useful status updates for LSP.
@@ -893,7 +893,7 @@ require('lazy').setup({
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
   { -- Collection of various small independent plugins/modules
-    'echasnovski/mini.nvim',
+    'nvim-mini/mini.nvim',
     config = function()
       -- Better Around/Inside textobjects
       --
