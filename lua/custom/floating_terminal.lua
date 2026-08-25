@@ -5,7 +5,7 @@ local state = {
   win = nil,
 }
 
-local function get_shell()
+local function get_shell_cmd()
   if vim.fn.has 'win32' == 1 then
     -- Git Bash (meest stabiel) -- check the common install locations rather than hardcoding one,
     -- since a non-default/portable install (scoop, per-user AppData, 32-bit) won't be there.
@@ -17,13 +17,15 @@ local function get_shell()
     }
     for _, path in ipairs(candidates) do
       if vim.fn.filereadable(path) == 1 then
-        return path
+        return { path, '--login', '-i' }
       end
     end
     vim.notify('Git Bash not found in common install locations, falling back to ' .. vim.o.shell, vim.log.levels.WARN)
-    return vim.o.shell
+    -- Zonder de bash-vlaggen: de fallback is hier cmd.exe of PowerShell, en die
+    -- weigeren te starten op `--login`/`-i`.
+    return { vim.o.shell }
   end
-  return vim.o.shell
+  return { vim.o.shell, '--login', '-i' }
 end
 
 local function create_window()
@@ -59,7 +61,9 @@ function M.toggle()
     vim.bo[state.buf].bufhidden = 'hide' -- nvim_buf_set_option() is deprecated; index vim.bo instead
 
     create_window()
-    vim.fn.termopen { get_shell(), '--login', '-i' }
+    -- termopen() is deprecated (zie `:help deprecated`); jobstart met `term = true`
+    -- is de vervanger.
+    vim.fn.jobstart(get_shell_cmd(), { term = true })
     return
   end
 

@@ -676,6 +676,9 @@ require('lazy').setup({
         html = {},
         cssls = {},
         jsonls = {},
+        -- eslint komt uit hetzelfde npm-pakket (vscode-langservers-extracted) als de
+        -- html/css/json-servers hierboven, dus dit kost geen extra download.
+        eslint = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -1051,6 +1054,10 @@ require('lazy').setup({
   -- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
   -- you can continue same window with `<space>sr` which resumes last telescope search
 }, {
+  -- Geen enkele plugin hier heeft luarocks nodig. Zonder dit blijft lazy een
+  -- hererocks/lua5.1 omgeving willen bootstrappen en meldt `:checkhealth` daar
+  -- een fout over.
+  rocks = { enabled = false },
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
     -- default lazy.nvim defined Nerd Font icons, otherwise define a unicode icons table

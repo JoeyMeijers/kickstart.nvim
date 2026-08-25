@@ -30,6 +30,14 @@ map('n', '<leader>gB', function()
   require('gitsigns').blame_line { full = true }
 end, { desc = 'Git blame line' })
 
-map({ 'n', 't' }, '<leader>tt', function()
+local function toggle_terminal()
   require('custom.floating_terminal').toggle()
-end, { desc = 'Toggle floating terminal' })
+end
+
+map('n', '<leader>tt', toggle_terminal, { desc = 'Toggle floating terminal' })
+
+-- In terminal-mode is <leader> gewoon de spatiebalk: een mapping daarop laat elke
+-- ' t' in je shell-invoer `timeoutlen` hangen, en ' tt' zou de terminal dichtklappen.
+-- <C-/> botst niet met shell-invoer. Veel terminals sturen dat als <C-_>, dus beide.
+map({ 'n', 't' }, '<C-/>', toggle_terminal, { desc = 'Toggle floating terminal' })
+map({ 'n', 't' }, '<C-_>', toggle_terminal, { desc = 'Toggle floating terminal' })
