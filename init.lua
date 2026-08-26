@@ -245,6 +245,9 @@ require('lazy').setup({
   -- See `:help gitsigns` to understand what the configuration keys do
   { -- Adds git related signs to the gutter, as well as utilities for managing changes
     'lewis6991/gitsigns.nvim',
+    -- Volg de nieuwste release-tag i.p.v. de main-branch: main bevat soms nog
+    -- niet-uitgeteste wijzigingen (zoals een timing-bug die <leader>h liet haperen).
+    version = '*',
     opts = {
       signs = {
         add = { text = '+' },
