@@ -1,8 +1,9 @@
 # Overzetten naar een offline Windows-machine
 
 Deze config draait op een machine zonder internet, mits je de artefacten die
-normaal gedownload worden vooraf meeneemt. Nexus (npm-proxy) dekt een groot deel
-daarvan; de rest is handwerk.
+normaal gedownload worden vooraf meeneemt. De scripts nemen standaard *alles*
+mee (ook wat Nexus/pip in theorie zouden kunnen leveren) -- zie sectie 1e
+hieronder voor waarom dat bewust is.
 
 Uitgangspunt: de werk-PC heeft **node + npm met `.npmrc` naar Nexus**, een werkende
 `pip install`, en een Neovim 0.12.x installatie.
@@ -66,32 +67,42 @@ Draai daar een `nvim` met deze config, wacht tot alle parsers gecompileerd zijn,
 en kopieer dan de inhoud van `site\parser\` (bestanden heten `<lang>.so`, ook op
 Windows) naar de offline machine.
 
-### e. De drie GitHub-binaries
+### e. Alle Mason-pakketten (standaard ~800 MB)
 
-Mason haalt `ruff`, `stylua` en `lua-language-server` van GitHub-releases, niet van
-npm of PyPI -- die drie moeten dus mee (~49 MB). Let op dat `ruff` hier de
-uitzondering is: die staat ook op PyPI, maar Mason gebruikt de GitHub-release.
+`export-offline.ps1` neemt standaard de hele `mason\packages`-map mee -- dus ook
+de npm-pakketten (`typescript-language-server`, `angular-language-server`,
+`vscode-langservers-extracted`, `prettierd`) en het PyPI-pakket (`basedpyright`),
+niet alleen de drie GitHub-releases (`ruff`, `stylua`, `lua-language-server`).
 
-Wat juist **niet** mee hoeft, en waarom dat de moeite van het weglaten waard is:
+Dat lijkt overkill zolang Nexus (npm) en `pip install` op de doelmachine werken --
+en in theorie is dat ook zo. In de praktijk doet Mason voor sommige pakketten
+echter *eigen*, niet-configureerbare aanroepen naar het publieke internet, los van
+je npm-/pip-instellingen:
 
-| bron | omvang | |
-|---|---|---|
-| npm (7 pakketten) | ~517 MB | Nexus levert dit |
-| PyPI (`basedpyright`) | ~281 MB | `pip install` werkt daar |
+- een JSON-schema-download voor `json-lsp`, `html-lsp` en `eslint-lsp`;
+- een rechtstreekse PyPI-versie-lookup voor `basedpyright`.
 
-Blind de hele `mason`-map kopieren is dus ruim 800 MB waarvan het grootste deel op
-de doelmachine gewoon opnieuw op te halen is. Het complete pakket komt selectief
-uit op zo'n 160 MB.
+Beide gaan buiten Nexus/pip om, dus `:MasonToolsInstall` loopt daar op een
+offline machine alsnog op vast -- ook met een prima werkende proxy. De enige
+betrouwbare oplossing is deze stap op de doelmachine helemaal vermijden door
+alles al kant-en-klaar geïnstalleerd mee te geven.
+
+Wil je toch het oude, kleinere pakket (~160 MB, alleen de drie GitHub-releases),
+en weet je zeker dat Nexus/pip op de doelmachine de rest kunnen leveren zonder
+tegen bovenstaande aan te lopen? Draai dan `export-offline.ps1 -Minimal`. Dat is
+in de praktijk zelden het geval -- zie hierboven.
 
 ## 2. Op de offline machine
 
-1. Config, `lazy`, `mason\registries` en `site\parser` op hun plek zetten.
+1. Config, `lazy`, `mason\registries`, `mason\bin`, `site\parser` en alle
+   `mason\packages\*` op hun plek zetten (`import-offline.ps1` doet dit).
 2. `nvim` starten. Lazy vindt alle plugins al op schijf en probeert niets te
    downloaden.
-3. `:MasonToolsInstall` — dit trekt de npm-pakketten via Nexus binnen:
-   `typescript-language-server`, `angular-language-server`,
-   `vscode-langservers-extracted` (goed voor html/css/json/eslint) en
-   `prettierd`.
+3. Standaard is dit alles: **`:MasonToolsInstall` is niet nodig**, alle
+   pakketten zijn al aanwezig. Alleen als het pakket met `-Minimal` is gemaakt
+   moet je die stap alsnog draaien (en dan kan hij, zoals hierboven, vastlopen op
+   Mason's eigen schema-/PyPI-aanroepen -- exporteer in dat geval opnieuw zonder
+   `-Minimal`).
 
 ## 3. Verifiëren
 

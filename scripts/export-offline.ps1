@@ -7,22 +7,29 @@
     is opgestart (plugins binnengehaald, treesitter-parsers gecompileerd, Mason-pakketten
     geinstalleerd).
 
-    Meegenomen wordt alleen wat op de doelmachine niet zelf op te halen is:
-      - de config, als git bundle (behoudt de historie)
-      - de lazy.nvim plugin-map
-      - de gecompileerde treesitter-parsers
-      - de Mason registry-cache -- zonder deze kan Mason niets via Nexus installeren
-      - de Mason-pakketten die van GitHub-releases komen
+    Neemt standaard ALLES mee wat Mason heeft geinstalleerd -- ook de npm- en
+    pip-pakketten (prettierd, basedpyright, vscode-langservers-extracted, ...).
 
-    NIET meegenomen: alles wat via npm of pip binnenkomt. Op de doelmachine leveren
-    Nexus en pip die zelf, en dat scheelt ruim 750 MB.
+    Reden: naast de package-install zelf doet Mason voor sommige pakketten ook eigen,
+    niet-configureerbare aanroepen naar het publieke internet -- een JSON-schema-download
+    voor json-lsp/html-lsp/eslint-lsp, en een rechtstreekse PyPI-versie-lookup voor
+    basedpyright. Die gaan altijd langs Nexus/pip heen, dus zelfs met een werkende
+    npm/pip-proxy blijft `:MasonToolsInstall` op een offline machine daarop stuklopen.
+    De enige betrouwbare oplossing is deze stap op de doelmachine helemaal vermijden
+    door alles al kant-en-klaar geinstalleerd mee te geven.
+
+    Dit kost overdrachtsgrootte (~800 MB i.p.v. ~160 MB), maar dat is de prijs voor een
+    doelmachine die nooit zelf iets van het internet hoeft te proberen te halen.
 
 .PARAMETER OutputPath
     Map waarin het pakket wordt aangemaakt. Standaard de huidige map.
 
-.PARAMETER IncludePypi
-    Neem ook de PyPI-pakketten (basedpyright) mee. Alleen nodig als pip op de
-    doelmachine geen index kan bereiken.
+.PARAMETER Minimal
+    Terug naar het oude gedrag: neem alleen de Mason-pakketten mee die van
+    GitHub-releases komen (ruff, stylua, lua-language-server) en laat npm-/pip-pakketten
+    achterwege. Alleen zinvol als je zeker weet dat Nexus/pip op de doelmachine ALLE
+    benodigde pakketten kan leveren zonder dat Mason's eigen schema-/PyPI-aanroepen
+    in de weg zitten (zie de .DESCRIPTION hierboven) -- in de praktijk dus zelden.
 
 .PARAMETER Zip
     Maak na het stagen ook een .zip. Let op: Compress-Archive kan struikelen over
@@ -41,17 +48,22 @@ param(
     [string] $OutputPath = (Get-Location).Path,
     [string] $ConfigPath = (Join-Path $env:LOCALAPPDATA 'nvim'),
     [string] $DataPath   = (Join-Path $env:LOCALAPPDATA 'nvim-data'),
-    [switch] $IncludePypi,
+    [switch] $Minimal,
     [switch] $Zip,
     [switch] $DryRun
 )
 
 $ErrorActionPreference = 'Stop'
+# PowerShell 7.3+ zet stderr-regels van externe tools (git 'Cloning into...',
+# 'Enumerating objects', etc.) om in afbrekende fouten zodra $ErrorActionPreference
+# 'Stop' is -- ook al is de exitcode 0. Dit script controleert $LASTEXITCODE zelf al
+# na elke git/robocopy-aanroep, dus die promotie hoeft hier niet.
+if (Test-Path variable:PSNativeCommandUseErrorActionPreference) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
 
-# Mason-pakketten die van GitHub-releases komen. Alles wat hier niet staat komt
-# via npm (Nexus) of pip en hoeft dus niet mee.
+# Alleen gebruikt met -Minimal: de Mason-pakketten die van GitHub-releases komen.
 $GithubPackages = @('ruff', 'stylua', 'lua-language-server')
-$PypiPackages   = @('basedpyright')
 
 function Write-Step { param([string] $Message) Write-Host "==> $Message" -ForegroundColor Cyan }
 function Write-Warn { param([string] $Message) Write-Host "  ! $Message" -ForegroundColor Yellow }
@@ -66,12 +78,24 @@ function Get-DirectorySize {
     return $sum
 }
 
+
+function Invoke-Native {
+    # Draait een extern commando (git, robocopy, ...) met $ErrorActionPreference
+    # lokaal op 'Continue'. Zonder dit zet PowerShell elke stderr-regel van zo'n
+    # commando -- ook doodgewone voortgangsmeldingen als git's "Cloning into..." --
+    # om in een afbrekende fout zodra het script zelf 'Stop' gebruikt. De
+    # aanroeper controleert na afloop gewoon $LASTEXITCODE, zoals al gebeurde.
+    param([Parameter(Mandatory)][scriptblock] $Script)
+    $ErrorActionPreference = 'Continue'
+    & $Script
+}
+
 function Copy-Tree {
     param([string] $Source, [string] $Destination)
     # robocopy in plaats van Copy-Item: die laatste faalt op paden > 260 tekens,
     # en plugin-mappen zitten vol diepe boomstructuren.
     # Exitcodes 0-7 zijn succes; 8 en hoger is een echte fout.
-    $null = robocopy $Source $Destination /E /NFL /NDL /NJH /NJS /NP /R:2 /W:1
+    Invoke-Native { $null = robocopy $Source $Destination /E /NFL /NDL /NJH /NJS /NP /R:2 /W:1 }
     if ($LASTEXITCODE -ge 8) {
         throw "robocopy faalde ($LASTEXITCODE) bij het kopieren van $Source"
     }
@@ -121,6 +145,11 @@ if (-not (Test-Path -LiteralPath $registryDir)) {
     $problems += "Mason registry-cache niet gevonden: $registryDir -- zonder deze kan Mason op de doelmachine niets installeren"
 }
 
+$packagesDir = Join-Path $DataPath 'mason\packages'
+if (-not $Minimal -and -not (Test-Path -LiteralPath $packagesDir)) {
+    $problems += "Mason packages-map niet gevonden: $packagesDir"
+}
+
 if ($problems.Count -gt 0) {
     foreach ($p in $problems) { Write-Fail $p }
     throw 'Vooraf-controle mislukt; er is niets weggeschreven.'
@@ -134,17 +163,23 @@ $stamp     = Get-Date -Format 'yyyyMMdd-HHmmss'
 $stageName = "nvim-offline-$stamp"
 $stageDir  = Join-Path $OutputPath $stageName
 
-$wanted = @($GithubPackages)
-if ($IncludePypi) { $wanted += $PypiPackages }
-
-$packagesDir = Join-Path $DataPath 'mason\packages'
 $packages = @()
-foreach ($name in $wanted) {
-    $dir = Join-Path $packagesDir $name
-    if (Test-Path -LiteralPath $dir) {
-        $packages += $name
-    } else {
-        Write-Warn "Mason-pakket '$name' staat niet geinstalleerd; wordt overgeslagen"
+if ($Minimal) {
+    foreach ($name in $GithubPackages) {
+        $dir = Join-Path $packagesDir $name
+        if (Test-Path -LiteralPath $dir) {
+            $packages += $name
+        } else {
+            Write-Warn "Mason-pakket '$name' staat niet geinstalleerd; wordt overgeslagen"
+        }
+    }
+} else {
+    # Alles wat Mason op deze machine heeft geinstalleerd, ongeacht bron
+    # (GitHub-release, npm/Nexus of pip) -- zie .DESCRIPTION voor waarom.
+    $packages = @(Get-ChildItem -LiteralPath $packagesDir -Directory -ErrorAction SilentlyContinue |
+                  ForEach-Object { $_.Name } | Sort-Object)
+    if ($packages.Count -eq 0) {
+        Write-Warn "geen Mason-pakketten gevonden in $packagesDir"
     }
 }
 
@@ -154,9 +189,9 @@ Write-Host "    config:   $ConfigPath (als git bundle)"
 Write-Host "    plugins:  $lazyDir ($([math]::Round((Get-DirectorySize $lazyDir)/1MB,1)) MB)"
 Write-Host "    parsers:  $parserDir ($($parsers.Count) stuks)"
 Write-Host "    registry: $registryDir"
-Write-Host "    mason:    $($packages -join ', ')"
-if (-not $IncludePypi) {
-    Write-Host '    overgeslagen: npm- en pip-pakketten (komen daar via Nexus/pip)'
+Write-Host "    mason:    $($packages.Count) pakketten ($([math]::Round((Get-DirectorySize $packagesDir)/1MB,1)) MB): $($packages -join ', ')"
+if ($Minimal) {
+    Write-Host '    overgeslagen: npm- en pip-pakketten (-Minimal actief -- lees de .DESCRIPTION over waarom dat op de doelmachine meestal alsnog vastloopt)'
 }
 
 if ($DryRun) {
@@ -179,7 +214,7 @@ Push-Location $ConfigPath
 try {
     $isRepo = (git rev-parse --is-inside-work-tree 2>$null)
     if ($LASTEXITCODE -eq 0 -and $isRepo -eq 'true') {
-        git bundle create $bundlePath --all 2>&1 | Out-Null
+        Invoke-Native { git bundle create $bundlePath --all 2>$null }
         if ($LASTEXITCODE -ne 0) { throw 'git bundle create is mislukt' }
         $dirty = git status --porcelain
         if ($dirty) {
@@ -208,8 +243,8 @@ foreach ($name in $packages) {
     Copy-Tree -Source (Join-Path $packagesDir $name) -Destination (Join-Path $stageDir "mason-packages\$name")
 }
 
-# De shims in mason\bin verwijzen naar pakketmappen. Ze zijn klein; Mason maakt ze
-# opnieuw aan voor alles wat daar alsnog geinstalleerd wordt.
+# De shims in mason\bin verwijzen naar pakketmappen. Neem ze mee zoals ze zijn --
+# zo hoeft Mason op de doelmachine ze niet zelf opnieuw te linken.
 $binDir = Join-Path $DataPath 'mason\bin'
 if (Test-Path -LiteralPath $binDir) {
     Write-Host '    mason bin...'
@@ -232,8 +267,12 @@ $manifest = [ordered]@{
     parsers       = $parsers
     parserCount   = $parsers.Count
     masonPackages = $packages
-    includesPypi  = [bool] $IncludePypi
-    notes         = 'npm-pakketten komen op de doelmachine via Nexus; draai daar :MasonToolsInstall'
+    minimal       = [bool] $Minimal
+    notes         = if ($Minimal) {
+        'Minimal-modus: npm/pip-pakketten NIET meegenomen. Op de doelmachine kan :MasonToolsInstall vastlopen op Mason eigen schema-/PyPI-aanroepen naar het publieke internet -- zie de .DESCRIPTION in export-offline.ps1.'
+    } else {
+        'Alle Mason-pakketten zijn meegenomen; op de doelmachine is :MasonToolsInstall niet nodig.'
+    }
 }
 $manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $stageDir 'manifest.json') -Encoding UTF8
 

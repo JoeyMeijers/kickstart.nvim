@@ -10,6 +10,12 @@
     Bestaande installaties worden niet overschreven maar hernoemd naar
     <naam>.bak-<tijdstempel>, zodat je altijd terug kunt.
 
+    Als het pakket met alle Mason-pakketten is gemaakt (het standaardgedrag van
+    export-offline.ps1), staat na dit script alles al klaar -- inclusief de
+    npm-/pip-pakketten. Je hoeft dan geen :MasonToolsInstall te draaien: dat
+    zou op een offline machine alsnog vastlopen op Mason's eigen schema- en
+    PyPI-aanroepen naar het publieke internet, los van of Nexus/pip werken.
+
 .PARAMETER Package
     Map (of .zip) die door export-offline.ps1 is gemaakt.
 
@@ -31,13 +37,32 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# PowerShell 7.3+ zet stderr-regels van externe tools (git 'Cloning into...',
+# 'Enumerating objects', etc.) om in afbrekende fouten zodra $ErrorActionPreference
+# 'Stop' is -- ook al is de exitcode 0. Dit script controleert $LASTEXITCODE zelf al
+# na elke git/robocopy-aanroep, dus die promotie hoeft hier niet.
+if (Test-Path variable:PSNativeCommandUseErrorActionPreference) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
 
 function Write-Step { param([string] $Message) Write-Host "==> $Message" -ForegroundColor Cyan }
 function Write-Warn { param([string] $Message) Write-Host "  ! $Message" -ForegroundColor Yellow }
 
+
+function Invoke-Native {
+    # Draait een extern commando (git, robocopy, ...) met $ErrorActionPreference
+    # lokaal op 'Continue'. Zonder dit zet PowerShell elke stderr-regel van zo'n
+    # commando -- ook doodgewone voortgangsmeldingen als git's "Cloning into..." --
+    # om in een afbrekende fout zodra het script zelf 'Stop' gebruikt. De
+    # aanroeper controleert na afloop gewoon $LASTEXITCODE, zoals al gebeurde.
+    param([Parameter(Mandatory)][scriptblock] $Script)
+    $ErrorActionPreference = 'Continue'
+    & $Script
+}
+
 function Copy-Tree {
     param([string] $Source, [string] $Destination)
-    $null = robocopy $Source $Destination /E /NFL /NDL /NJH /NJS /NP /R:2 /W:1
+    Invoke-Native { $null = robocopy $Source $Destination /E /NFL /NDL /NJH /NJS /NP /R:2 /W:1 }
     if ($LASTEXITCODE -ge 8) { throw "robocopy faalde ($LASTEXITCODE) bij $Source" }
     $global:LASTEXITCODE = 0
 }
@@ -109,11 +134,11 @@ if (Test-Path -LiteralPath $bundlePath) {
     if ($DryRun) {
         Write-Host "    zou clonen: $bundlePath -> $ConfigPath"
     } else {
-        git clone $bundlePath $ConfigPath 2>&1 | Out-Null
+        Invoke-Native { git clone $bundlePath $ConfigPath 2>$null }
         if ($LASTEXITCODE -ne 0) { throw 'git clone uit de bundle is mislukt' }
         # De origin wijst nu naar een bundle op een stick die er straks niet meer is.
         Push-Location $ConfigPath
-        try { git remote remove origin 2>&1 | Out-Null } finally { Pop-Location }
+        try { Invoke-Native { git remote remove origin 2>$null } } finally { Pop-Location }
         Write-Host "    $ConfigPath (uit bundle, historie behouden)"
     }
 } elseif (Test-Path -LiteralPath $plainConfig) {
@@ -184,12 +209,22 @@ if ($manifest) {
     }
 }
 
+$isMinimal = $manifest -and $manifest.minimal
+
 Write-Host ''
 Write-Host 'Klaar. Nog te doen op deze machine:' -ForegroundColor Green
-Write-Host '  1. Controleer dat npm naar Nexus wijst:  npm config get registry'
-Write-Host '  2. Start nvim. Lazy vindt alle plugins al op schijf.'
-Write-Host '  3. Draai :MasonToolsInstall voor de npm- en pip-pakketten.'
-Write-Host '  4. Controleer met :checkhealth en open een .component.html uit een Angular-project.'
+Write-Host '  1. Start nvim. Lazy vindt alle plugins al op schijf.'
+if ($isMinimal) {
+    Write-Host '  2. Dit pakket is met -Minimal gemaakt: npm-/pip-pakketten ontbreken.'
+    Write-Host '     Controleer dat npm naar Nexus wijst (npm config get registry) en draai'
+    Write-Host '     :MasonToolsInstall -- houd er rekening mee dat dit kan vastlopen op Mason'
+    Write-Host '     eigen schema-/PyPI-aanroepen naar het publieke internet, ongeacht Nexus/pip.'
+    Write-Host '     Exporteer in dat geval opnieuw zonder -Minimal.'
+} else {
+    Write-Host '  2. Alle Mason-pakketten (inclusief npm/pip) zaten al in het pakket --'
+    Write-Host '     :MasonToolsInstall is niet nodig.'
+}
+Write-Host '  3. Controleer met :checkhealth en open een .component.html uit een Angular-project.'
 Write-Host ''
 Write-Host 'Mocht dit script niet mogen draaien, dan is dit alles wat het doet:'
 Write-Host "  <pakket>\lazy             -> $DataPath\lazy"
