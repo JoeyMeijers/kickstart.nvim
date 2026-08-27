@@ -657,17 +657,26 @@ require('lazy').setup({
         },
         -- Python: BasedPyright handles types and language features; Ruff handles linting and formatting.
         basedpyright = {
-          -- Op Windows: roep python.exe in de venv rechtstreeks aan i.p.v. de door pip
-          -- gegenereerde basedpyright-langserver.exe. Die launcher heeft het pad naar
-          -- python.exe hardcoded vanaf de machine waar `pip install` draaide (de pc met
-          -- internet); na overzetten via export/import-offline.ps1 verwijst dat pad naar
-          -- een gebruiker die op de offline pc niet bestaat. python.exe zelf is gewoon
-          -- meegekopieerd, dus die roepen we direct aan -- zie venv/bin/basedpyright-langserver
-          -- voor wat de launcher intern ook doet.
+          -- Op Windows: sla Python helemaal over en roep het gebundelde node.exe
+          -- rechtstreeks aan op basedpyright's eigen langserver.index.js. Zowel de
+          -- door pip gegenereerde basedpyright-langserver.exe als de venv's eigen
+          -- python.exe hebben een absoluut pad hardcoded naar de Python-installatie
+          -- op de machine waar Mason dit pakket oorspronkelijk zette (via pyvenv.cfg's
+          -- `home`-sleutel); na overzetten via export/import-offline.ps1 bestaat die
+          -- gebruiker/installatie niet meer op de offline pc, dus elke route via een
+          -- Python-interpreter breekt. node.exe zelf is een op zichzelf staand
+          -- programma zonder zulke ingebakken paden, en basedpyright roept intern zelf ook
+          -- niets anders aan (zie basedpyright/run_node.py) -- dit is dus geen omweg,
+          -- maar precies wat er al gebeurt, alleen zonder de kapotte Python-schil eromheen.
           cmd = vim.fn.has 'win32' == 1 and {
-            vim.fs.joinpath(vim.fn.stdpath 'data', 'mason', 'packages', 'basedpyright', 'venv', 'Scripts', 'python.exe'),
-            '-c',
-            'from basedpyright.langserver import main; import sys; sys.exit(main())',
+            vim.fs.joinpath(
+              vim.fn.stdpath 'data',
+              'mason', 'packages', 'basedpyright', 'venv', 'Lib', 'site-packages', 'nodejs_wheel', 'node.exe'
+            ),
+            vim.fs.joinpath(
+              vim.fn.stdpath 'data',
+              'mason', 'packages', 'basedpyright', 'venv', 'Lib', 'site-packages', 'basedpyright', 'langserver.index.js'
+            ),
             '--stdio',
           } or nil,
           settings = {
