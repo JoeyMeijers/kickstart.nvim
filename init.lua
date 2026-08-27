@@ -657,6 +657,19 @@ require('lazy').setup({
         },
         -- Python: BasedPyright handles types and language features; Ruff handles linting and formatting.
         basedpyright = {
+          -- Op Windows: roep python.exe in de venv rechtstreeks aan i.p.v. de door pip
+          -- gegenereerde basedpyright-langserver.exe. Die launcher heeft het pad naar
+          -- python.exe hardcoded vanaf de machine waar `pip install` draaide (de pc met
+          -- internet); na overzetten via export/import-offline.ps1 verwijst dat pad naar
+          -- een gebruiker die op de offline pc niet bestaat. python.exe zelf is gewoon
+          -- meegekopieerd, dus die roepen we direct aan -- zie venv/bin/basedpyright-langserver
+          -- voor wat de launcher intern ook doet.
+          cmd = vim.fn.has 'win32' == 1 and {
+            vim.fs.joinpath(vim.fn.stdpath 'data', 'mason', 'packages', 'basedpyright', 'venv', 'Scripts', 'python.exe'),
+            '-c',
+            'from basedpyright.langserver import main; import sys; sys.exit(main())',
+            '--stdio',
+          } or nil,
           settings = {
             basedpyright = {
               analysis = {
