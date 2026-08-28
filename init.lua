@@ -400,7 +400,13 @@ require('lazy').setup({
           --   i = { ['<c-enter>'] = 'to_fuzzy_refine' },
           -- },
         },
-        -- pickers = {}
+        pickers = {
+          find_files = {
+            hidden = true,
+            -- fd toont met --hidden ook .git/ zelf; dat staat niet in .gitignore
+            file_ignore_patterns = { '%.git[/\\]' },
+          },
+        },
         extensions = {
           ['ui-select'] = {
             require('telescope.themes').get_dropdown(),
