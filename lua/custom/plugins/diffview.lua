@@ -38,6 +38,11 @@ return {
       -- Staat standaard aan en vereist nvim-web-devicons; deze config heeft dat niet
       -- (kickstart is overgestapt op mini.icons).
       use_icons = vim.g.have_nerd_font,
+      -- Standaard 35. Met listing_style = 'tree' worden geneste paden ingesprongen
+      -- getoond, en in een repo met diepe mappen valt dat net te krap uit.
+      file_panel = {
+        win_config = { width = 45 },
+      },
     }
     if not vim.g.have_nerd_font then
       -- De standaardwaarden hiervan komen uit een Nerd Font en worden anders blokjes.
