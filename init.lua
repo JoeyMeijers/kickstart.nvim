@@ -627,6 +627,26 @@ require('lazy').setup({
       --  - capabilities (table): Override fields in capabilities. Can be used to disable certain LSP features.
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
+      -- Op Windows: sla Python helemaal over en roep het gebundelde node.exe rechtstreeks
+      -- aan op basedpyright's eigen langserver.index.js. Zowel de door pip gegenereerde
+      -- basedpyright-langserver.exe als de venv's eigen python.exe hebben een absoluut pad
+      -- hardcoded naar de Python-installatie op de machine waar Mason dit pakket
+      -- oorspronkelijk zette (via pyvenv.cfg's `home`-sleutel); na overzetten via
+      -- export/import-offline.ps1 bestaat die gebruiker/installatie niet meer op de offline
+      -- pc, dus elke route via een Python-interpreter breekt. node.exe zelf is een op
+      -- zichzelf staand programma zonder zulke ingebakken paden, en basedpyright roept
+      -- intern zelf ook niets anders aan (zie basedpyright/run_node.py) -- dit is dus geen
+      -- omweg, maar precies wat er al gebeurt, zonder de kapotte Python-schil eromheen.
+      local basedpyright_cmd = nil
+      if vim.fn.has 'win32' == 1 then
+        local site_packages = vim.fs.joinpath(vim.fn.stdpath 'data', 'mason', 'packages', 'basedpyright', 'venv', 'Lib', 'site-packages')
+        basedpyright_cmd = {
+          vim.fs.joinpath(site_packages, 'nodejs_wheel', 'node.exe'),
+          vim.fs.joinpath(site_packages, 'basedpyright', 'langserver.index.js'),
+          '--stdio',
+        }
+      end
+
       local servers = {
         -- clangd = {},
         -- gopls = {},
@@ -657,28 +677,7 @@ require('lazy').setup({
         },
         -- Python: BasedPyright handles types and language features; Ruff handles linting and formatting.
         basedpyright = {
-          -- Op Windows: sla Python helemaal over en roep het gebundelde node.exe
-          -- rechtstreeks aan op basedpyright's eigen langserver.index.js. Zowel de
-          -- door pip gegenereerde basedpyright-langserver.exe als de venv's eigen
-          -- python.exe hebben een absoluut pad hardcoded naar de Python-installatie
-          -- op de machine waar Mason dit pakket oorspronkelijk zette (via pyvenv.cfg's
-          -- `home`-sleutel); na overzetten via export/import-offline.ps1 bestaat die
-          -- gebruiker/installatie niet meer op de offline pc, dus elke route via een
-          -- Python-interpreter breekt. node.exe zelf is een op zichzelf staand
-          -- programma zonder zulke ingebakken paden, en basedpyright roept intern zelf ook
-          -- niets anders aan (zie basedpyright/run_node.py) -- dit is dus geen omweg,
-          -- maar precies wat er al gebeurt, alleen zonder de kapotte Python-schil eromheen.
-          cmd = vim.fn.has 'win32' == 1 and {
-            vim.fs.joinpath(
-              vim.fn.stdpath 'data',
-              'mason', 'packages', 'basedpyright', 'venv', 'Lib', 'site-packages', 'nodejs_wheel', 'node.exe'
-            ),
-            vim.fs.joinpath(
-              vim.fn.stdpath 'data',
-              'mason', 'packages', 'basedpyright', 'venv', 'Lib', 'site-packages', 'basedpyright', 'langserver.index.js'
-            ),
-            '--stdio',
-          } or nil,
+          cmd = basedpyright_cmd,
           settings = {
             basedpyright = {
               analysis = {
