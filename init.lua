@@ -157,6 +157,11 @@ vim.opt.cursorline = true
 -- Minimal number of screen lines to keep above and below the cursor.
 vim.opt.scrolloff = 10
 
+-- 24-bit RGB kleuren i.p.v. het 256-kleuren-fallback-palet. Nodig voor rose-pine
+-- (en de meeste moderne colorschemes) om er correct uit te zien; niet elke
+-- terminal (vooral op Windows) zet dit vanzelf aan.
+vim.opt.termguicolors = true
+
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
