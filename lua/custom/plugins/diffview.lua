@@ -3,9 +3,29 @@
 -- en -- belangrijker -- een 3-weg view om merge-conflicten in op te lossen, wat deze
 -- config verder helemaal niet heeft.
 --
---   :DiffviewOpen main...HEAD   alles wat jouw branch toevoegt sinds de merge-base
---   :DiffviewFileHistory %      de historie van dit bestand, doorbladerbaar
+--   <leader>gv                  openen/sluiten (huidige working tree)
+--   <leader>gV                  alles wat je branch toevoegt sinds main/master
+--   <leader>gh                  historie van dit bestand, doorbladerbaar
 --   :DiffviewOpen               tijdens een merge/rebase: de conflicten, 3-weg
+
+-- Bepaalt de default branch om <leader>gV tegen te diffen. Eerst origin/HEAD
+-- (de normale situatie); dat remote-ref bestaat niet in een config die via
+-- import-offline.ps1 is binnengehaald (origin wordt daar bewust verwijderd),
+-- dus dan terugvallen op een lokale main- of master-branch, welke er ook is.
+local function default_branch()
+  local ref = vim.fn.systemlist('git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null')[1]
+  if vim.v.shell_error == 0 and ref and ref ~= '' then
+    return ref
+  end
+  for _, name in ipairs { 'main', 'master' } do
+    vim.fn.system('git rev-parse --verify ' .. name .. ' 2>/dev/null')
+    if vim.v.shell_error == 0 then
+      return name
+    end
+  end
+  return 'HEAD'
+end
+
 return {
   'sindrets/diffview.nvim',
   -- Geen reden om dit bij elke start op te tuigen: laden zodra je het aanroept.
@@ -29,6 +49,20 @@ return {
         end
       end,
       desc = 'Git: diff[v]iew openen/sluiten',
+    },
+    {
+      '<leader>gV',
+      function()
+        vim.cmd('DiffviewOpen ' .. default_branch() .. '...HEAD')
+      end,
+      desc = 'Git: diff[V]iew tegen main/master sinds branch-punt',
+    },
+    {
+      '<leader>gh',
+      function()
+        vim.cmd 'DiffviewFileHistory %'
+      end,
+      desc = 'Git: [h]istorie van dit bestand',
     },
   },
   opts = function()
