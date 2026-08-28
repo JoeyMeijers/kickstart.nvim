@@ -1015,10 +1015,13 @@ require('lazy').setup({
       vim.api.nvim_create_autocmd('FileType', {
         pattern = '*',
         callback = function(args)
-          -- Real file buffers always have buftype == ''. This skips plugin/UI scratch buffers
-          -- (e.g. lazy.nvim's `lazy_backdrop` overlay window) that set a filetype but aren't
-          -- actual source files, so we never try to attach a parser to a fake "language".
-          if vim.bo[args.buf].buftype ~= '' then
+          -- Alleen buffers overslaan waar highlighting geen betekenis heeft. Een bredere
+          -- guard op `buftype ~= ''` kost kleur in elke preview, popup en diff-buffer
+          -- (die zijn allemaal `nofile`), terwijl de pcalls hieronder het geval waar het
+          -- ooit om ging -- een filetype dat geen taal is, zoals lazy.nvim's
+          -- `lazy_backdrop` -- al afvangen.
+          local skip_buftypes = { prompt = true, terminal = true }
+          if skip_buftypes[vim.bo[args.buf].buftype] then
             return
           end
 
