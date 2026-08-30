@@ -29,19 +29,13 @@ local function get_shell_cmd()
 end
 
 local function create_window()
-  local width = math.floor(vim.o.columns * 0.8)
-  local height = math.floor(vim.o.lines * 0.8)
-  local row = math.floor((vim.o.lines - height) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
+  -- Een echte vsplit rechts i.p.v. een float: gewoon navigeerbaar met <C-w>/
+  -- <C-h>/<C-l> en resizebaar zoals elk ander venster, geen aparte overlay-modus.
+  local width = math.floor(vim.o.columns * 0.4)
 
   state.win = vim.api.nvim_open_win(state.buf, true, {
-    relative = 'editor',
+    split = 'right',
     width = width,
-    height = height,
-    row = row,
-    col = col,
-    style = 'minimal',
-    border = 'rounded',
   })
 
   vim.cmd 'startinsert'

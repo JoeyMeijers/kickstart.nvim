@@ -31,13 +31,13 @@ map('n', '<leader>gB', function()
 end, { desc = 'Git blame line' })
 
 local function toggle_terminal()
-  require('custom.floating_terminal').toggle()
+  require('custom.terminal').toggle()
 end
 
-map('n', '<leader>tt', toggle_terminal, { desc = 'Toggle floating terminal' })
+map('n', '<leader>tt', toggle_terminal, { desc = 'Toggle terminal' })
 
 -- In terminal-mode is <leader> gewoon de spatiebalk: een mapping daarop laat elke
 -- ' t' in je shell-invoer `timeoutlen` hangen, en ' tt' zou de terminal dichtklappen.
 -- <C-/> botst niet met shell-invoer. Veel terminals sturen dat als <C-_>, dus beide.
-map({ 'n', 't' }, '<C-/>', toggle_terminal, { desc = 'Toggle floating terminal' })
-map({ 'n', 't' }, '<C-_>', toggle_terminal, { desc = 'Toggle floating terminal' })
+map({ 'n', 't' }, '<C-/>', toggle_terminal, { desc = 'Toggle terminal' })
+map({ 'n', 't' }, '<C-_>', toggle_terminal, { desc = 'Toggle terminal' })
