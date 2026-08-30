@@ -43,12 +43,16 @@ end
 local function create_window()
   -- Een echte vsplit rechts i.p.v. een float: gewoon navigeerbaar met <C-w>/
   -- <C-h>/<C-l> en resizebaar zoals elk ander venster, geen aparte overlay-modus.
-  local width = math.floor(vim.o.columns * 0.4)
-
-  state.win = vim.api.nvim_open_win(state.buf, true, {
-    split = 'right',
-    width = width,
-  })
+  --
+  -- botright i.p.v. nvim_open_win met split='right': die laatste splitst relatief
+  -- aan wat toevallig het actieve venster is (bv. naast Neo-tree als dat net
+  -- focus had), niet per se de rechterrand van het hele tabblad. botright dwingt
+  -- altijd de buitenste rechterkolom af, ongeacht waar je vandaan komt, zodat
+  -- <C-l> vanuit je editvenster hem altijd bereikt.
+  vim.cmd 'botright vsplit'
+  state.win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(state.win, state.buf)
+  vim.api.nvim_win_set_width(state.win, math.floor(vim.o.columns * 0.4))
 
   vim.cmd 'startinsert'
 end
