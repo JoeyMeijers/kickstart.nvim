@@ -5,6 +5,18 @@ local state = {
   win = nil,
 }
 
+-- Zonder dit beland je bij het terugwisselen naar het terminalvenster (bv. met
+-- <C-l>) in Terminal-Normal-mode i.p.v. terminal-mode: het venster wisselt wel,
+-- maar je kunt niet typen tot je zelf op i drukt -- voelt aan als "doet niks".
+vim.api.nvim_create_autocmd('WinEnter', {
+  desc = 'Terminal-mode hervatten bij het betreden van een terminalvenster',
+  callback = function()
+    if vim.bo.buftype == 'terminal' then
+      vim.cmd 'startinsert'
+    end
+  end,
+})
+
 local function get_shell_cmd()
   if vim.fn.has 'win32' == 1 then
     -- Git Bash (meest stabiel) -- check the common install locations rather than hardcoding one,
